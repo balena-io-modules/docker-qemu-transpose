@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "./build/",
+    "sourceMap": true,
+    "types": ["node"],
+    "target": "es6",
+    "noImplicitAny": true,
+    "strictNullChecks": true
+  },
+  "include": [
+    "src/",
+    "typings/"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "tests"
+  ]
+}
