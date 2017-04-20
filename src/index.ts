@@ -1,6 +1,9 @@
+import * as Promise  from 'bluebird'
 import * as _ from 'lodash'
 import * as parser from 'docker-file-parser'
 import * as fs from 'fs'
+import * as tar from 'tar-stream'
+import * as path from 'path'
 
 /**
  * TransposeOptions:
@@ -106,5 +109,58 @@ export function transpose(dockerfile: string, options: TransposeOptions): string
 	)
 
 	return commandsToDockerfile(outCommands)
+}
+
+// FIXME: This is taken from resin-io-modules/resin-bundle-resolve
+// export this code to a shared module and import it in this project
+// and resin-bundle-resolve
+export function normalizeTarEntry(name: string): string {
+  const normalized = path.normalize(name)
+  if (path.isAbsolute(normalized)) {
+    return normalized.substr(normalized.indexOf('/') + 1)
+  }
+  return normalized
+}
+
+export function transposeTarStream(tarStream: NodeJS.ReadableStream,
+                                   options: TransposeOptions,
+                                   dockerfileName: string = 'Dockerfile'): Promise<NodeJS.ReadableStream> {
+	const extract = tar.extract()
+	const pack = tar.pack()
+
+	return new Promise<NodeJS.ReadableStream>((resolve, reject) => {
+		extract.on('entry', (header: tar.TarHeader, stream: NodeJS.ReadableStream, next: Function) => {
+			if (normalizeTarEntry(header.name) == dockerfileName) {
+				// If the file is a Dockerfile, first read it into a string,
+				// transpose it, then push it back to the tar stream
+				let contents = ''
+				stream.on('data', (data: Buffer) => {
+					contents += data.toString()
+				})
+				stream.on('end', () => {
+					let newContent = transpose(contents, options)
+					pack.entry({ name: 'Dockerfile', size: newContent.length }, newContent)
+					next()
+				})
+			} else {
+				const entry = pack.entry(header, (err: Error) => {
+					if (_.isError(err)) {
+						reject(err)
+					}
+				})
+				stream.pipe(entry)
+				stream.on('end', next)
+			}
+
+		})
+
+		extract.on('finish', () => {
+			resolve(pack)
+		})
+
+		extract.on('error', reject)
+		tarStream.pipe(extract)
+	})
+
 }
 

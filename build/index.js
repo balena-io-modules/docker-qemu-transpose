@@ -1,8 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const Promise = require("bluebird");
 const _ = require("lodash");
 const parser = require("docker-file-parser");
-const fs = require("fs");
+const tar = require("tar-stream");
+const path = require("path");
 const generateQemuCopy = (options) => {
     return {
         name: 'COPY',
@@ -19,7 +21,6 @@ const transposeStringRun = (options, command) => {
     return {
         name: 'RUN',
         args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat([command.args])
-        // args: [options.containerQemuPath].concat((<string[]>command.args).join(' '))
     };
 };
 const transposeRun = (options, command) => {
@@ -73,7 +74,52 @@ function transpose(dockerfile, options) {
     return commandsToDockerfile(outCommands);
 }
 exports.transpose = transpose;
-const dockerfile = transpose(fs.readFileSync('Dockerfile.unemu').toString(), { hostQemuPath: 'qemu-arm', containerQemuPath: '/usr/local/bin/qemu' });
-console.log(dockerfile);
+// FIXME: This is taken from resin-io-modules/resin-bundle-resolve
+// export this code to a shared module and import it in this project
+// and resin-bundle-resolve
+function normalizeTarEntry(name) {
+    const normalized = path.normalize(name);
+    if (path.isAbsolute(normalized)) {
+        return normalized.substr(normalized.indexOf('/') + 1);
+    }
+    return normalized;
+}
+exports.normalizeTarEntry = normalizeTarEntry;
+function transposeTarStream(tarStream, options, dockerfileName = 'Dockerfile') {
+    const extract = tar.extract();
+    const pack = tar.pack();
+    return new Promise((resolve, reject) => {
+        extract.on('entry', (header, stream, next) => {
+            if (normalizeTarEntry(header.name) == dockerfileName) {
+                // If the file is a Dockerfile, first read it into a string,
+                // transpose it, then push it back to the tar stream
+                let contents = '';
+                stream.on('data', (data) => {
+                    contents += data.toString();
+                });
+                stream.on('end', () => {
+                    let newContent = transpose(contents, options);
+                    pack.entry({ name: 'Dockerfile', size: newContent.length }, newContent);
+                    next();
+                });
+            }
+            else {
+                const entry = pack.entry(header, (err) => {
+                    if (_.isError(err)) {
+                        reject(err);
+                    }
+                });
+                stream.pipe(entry);
+                stream.on('end', next);
+            }
+        });
+        extract.on('finish', () => {
+            resolve(pack);
+        });
+        extract.on('error', reject);
+        tarStream.pipe(extract);
+    });
+}
+exports.transposeTarStream = transposeTarStream;
 
 //# sourceMappingURL=index.js.map
