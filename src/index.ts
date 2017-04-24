@@ -155,6 +155,7 @@ export function transposeTarStream(tarStream: NodeJS.ReadableStream,
 		})
 
 		extract.on('finish', () => {
+			pack.finalize()
 			resolve(pack)
 		})
 

@@ -114,6 +114,7 @@ function transposeTarStream(tarStream, options, dockerfileName = 'Dockerfile') {
             }
         });
         extract.on('finish', () => {
+            pack.finalize();
             resolve(pack);
         });
         extract.on('error', reject);
