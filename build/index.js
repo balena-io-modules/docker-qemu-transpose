@@ -5,22 +5,28 @@ const _ = require("lodash");
 const parser = require("docker-file-parser");
 const tar = require("tar-stream");
 const path = require("path");
+const jsesc = require("jsesc");
 const generateQemuCopy = (options) => {
     return {
         name: 'COPY',
         args: [options.hostQemuPath, options.containerQemuPath]
     };
 };
+const processArgString = (argString) => {
+    return jsesc(argString, { quotes: 'double' });
+};
 const transposeArrayRun = (options, command) => {
+    const args = command.args.map(processArgString).join(' ');
     return {
         name: 'RUN',
-        args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat(command.args.join(' '))
+        args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat(args)
     };
 };
 const transposeStringRun = (options, command) => {
+    const processed = processArgString(command.args);
     return {
         name: 'RUN',
-        args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat([command.args])
+        args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat([processed])
     };
 };
 const transposeRun = (options, command) => {
@@ -104,13 +110,7 @@ function transposeTarStream(tarStream, options, dockerfileName = 'Dockerfile') {
                 });
             }
             else {
-                const entry = pack.entry(header, (err) => {
-                    if (_.isError(err)) {
-                        reject(err);
-                    }
-                });
-                stream.pipe(entry);
-                stream.on('end', next);
+                stream.pipe(pack.entry(header, next));
             }
         });
         extract.on('finish', () => {

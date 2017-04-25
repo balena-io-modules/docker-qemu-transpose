@@ -4,8 +4,8 @@
   "description": "Transpose a Dockerfile to use qemu-linux-user and emulate a build",
   "main": "build/index.js",
   "scripts": {
-    "start": "node build/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "gulp test",
+    "build": "gulp build"
   },
   "repository": {
     "type": "git",
@@ -22,20 +22,28 @@
   },
   "homepage": "https://github.com/resin-io-modules/docker-qemu-transpose#readme",
   "devDependencies": {
+    "@types/chai": "^3.5.1",
+    "@types/chai-as-promised": "0.0.30",
+    "@types/mocha": "^2.2.41",
+    "chai": "^3.5.0",
+    "chai-as-promised": "^6.0.0",
     "gulp": "^3.9.1",
     "gulp-clean": "^0.3.2",
     "gulp-mocha": "^4.3.0",
     "gulp-sourcemaps": "^2.5.1",
     "gulp-typescript": "^3.1.6",
+    "mocha": "^3.3.0",
     "ts-node": "^3.0.2",
     "typescript": "^2.2.2"
   },
   "dependencies": {
     "@types/bluebird": "^3.5.2",
+    "@types/jsesc": "^0.4.29",
     "@types/lodash": "^4.14.61",
     "@types/node": "^7.0.12",
     "bluebird": "^3.5.0",
     "docker-file-parser": "^1.0.1",
+    "jsesc": "^2.5.0",
     "lodash": "^4.17.4",
     "tar-stream": "^1.5.2"
   }
