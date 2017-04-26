@@ -4,6 +4,7 @@ import * as parser from 'docker-file-parser'
 import * as fs from 'fs'
 import * as tar from 'tar-stream'
 import * as path from 'path'
+import * as jsesc from 'jsesc'
 
 /**
  * TransposeOptions:
@@ -30,17 +31,23 @@ const generateQemuCopy = (options: TransposeOptions): parser.Command => {
 	}
 }
 
+const processArgString = (argString: string) => {
+	return jsesc(argString, { quotes: 'double' })
+}
+
 const transposeArrayRun = (options: TransposeOptions, command: parser.Command): parser.Command => {
+	const args = (<string[]>command.args).map(processArgString).join(' ')
 	return {
 		name: 'RUN',
-		args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat((<string[]>command.args).join(' '))
+		args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat(args)
 	}
 }
 
 const transposeStringRun = (options: TransposeOptions, command: parser.Command): parser.Command => {
+ 	const processed = processArgString(<string>command.args)
 	return {
 		name: 'RUN',
-		args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat([<string>command.args])
+		args:	[options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat([processed])
 	}
 }
 
@@ -129,7 +136,7 @@ export function transposeTarStream(tarStream: NodeJS.ReadableStream,
 	const pack = tar.pack()
 
 	return new Promise<NodeJS.ReadableStream>((resolve, reject) => {
-		extract.on('entry', (header: tar.TarHeader, stream: NodeJS.ReadableStream, next: Function) => {
+		extract.on('entry', (header: tar.TarHeader, stream: NodeJS.ReadableStream, next: (err?: Error) => void) => {
 			if (normalizeTarEntry(header.name) == dockerfileName) {
 				// If the file is a Dockerfile, first read it into a string,
 				// transpose it, then push it back to the tar stream
@@ -143,15 +150,8 @@ export function transposeTarStream(tarStream: NodeJS.ReadableStream,
 					next()
 				})
 			} else {
-				const entry = pack.entry(header, (err: Error) => {
-					if (_.isError(err)) {
-						reject(err)
-					}
-				})
-				stream.pipe(entry)
-				stream.on('end', next)
+				stream.pipe(pack.entry(header, next))
 			}
-
 		})
 
 		extract.on('finish', () => {
