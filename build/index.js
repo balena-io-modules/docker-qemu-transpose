@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const Promise = require("bluebird");
-const _ = require("lodash");
 const parser = require("docker-file-parser");
-const tar = require("tar-stream");
-const path = require("path");
 const jsesc = require("jsesc");
+const _ = require("lodash");
+const path = require("path");
+const tar = require("tar-stream");
+const streamToPromise = require('stream-to-promise');
 const generateQemuCopy = (options) => {
     return {
         name: 'COPY',
@@ -19,14 +20,14 @@ const transposeArrayRun = (options, command) => {
     const args = command.args.map(processArgString).join(' ');
     return {
         name: 'RUN',
-        args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat(args)
+        args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat(args)
     };
 };
 const transposeStringRun = (options, command) => {
     const processed = processArgString(command.args);
     return {
         name: 'RUN',
-        args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat([processed])
+        args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat([processed])
     };
 };
 const transposeRun = (options, command) => {
@@ -39,7 +40,7 @@ const identity = (options, command) => {
     return command;
 };
 const commandToTranspose = (command) => {
-    if (command.name == 'RUN') {
+    if (command.name === 'RUN') {
         return transposeRun;
     }
     return identity;
@@ -70,10 +71,9 @@ const commandsToDockerfile = (commands) => {
  *	OPtions to use when doing the transposing
  */
 function transpose(dockerfile, options) {
-    let output = '';
     // parse the Dokerfile
     const commands = parser.parse(dockerfile, { includeComments: false });
-    const firstRunIdx = _.findIndex(commands, (command) => command.name == 'RUN');
+    const firstRunIdx = _.findIndex(commands, (command) => command.name === 'RUN');
     let outCommands = commands.slice(0, firstRunIdx);
     outCommands.push(generateQemuCopy(options));
     outCommands = outCommands.concat(commands.slice(firstRunIdx).map((command) => commandToTranspose(command)(options, command)));
@@ -91,33 +91,30 @@ function normalizeTarEntry(name) {
     return normalized;
 }
 exports.normalizeTarEntry = normalizeTarEntry;
+const getTarEntryHandler = (pack, dockerfileName, opts) => {
+    return (header, stream, next) => {
+        streamToPromise(stream)
+            .then((buffer) => {
+            if (normalizeTarEntry(header.name) === dockerfileName) {
+                const newDockerfile = transpose(buffer.toString(), opts);
+                pack.entry({ name: 'Dockerfile' }, newDockerfile);
+            }
+            else {
+                pack.entry(header, buffer);
+            }
+            next();
+        });
+    };
+};
 function transposeTarStream(tarStream, options, dockerfileName = 'Dockerfile') {
     const extract = tar.extract();
     const pack = tar.pack();
     return new Promise((resolve, reject) => {
-        extract.on('entry', (header, stream, next) => {
-            if (normalizeTarEntry(header.name) == dockerfileName) {
-                // If the file is a Dockerfile, first read it into a string,
-                // transpose it, then push it back to the tar stream
-                let contents = '';
-                stream.on('data', (data) => {
-                    contents += data.toString();
-                });
-                stream.on('end', () => {
-                    let newContent = transpose(contents, options);
-                    pack.entry({ name: 'Dockerfile', size: newContent.length }, newContent);
-                    next();
-                });
-            }
-            else {
-                stream.pipe(pack.entry(header, next));
-            }
-        });
+        extract.on('entry', getTarEntryHandler(pack, dockerfileName, options));
         extract.on('finish', () => {
             pack.finalize();
             resolve(pack);
         });
-        extract.on('error', reject);
         tarStream.pipe(extract);
     });
 }

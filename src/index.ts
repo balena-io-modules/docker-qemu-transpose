@@ -1,10 +1,12 @@
-import * as Promise  from 'bluebird'
-import * as _ from 'lodash'
+import * as Promise from 'bluebird'
 import * as parser from 'docker-file-parser'
 import * as fs from 'fs'
-import * as tar from 'tar-stream'
-import * as path from 'path'
 import * as jsesc from 'jsesc'
+import * as _ from 'lodash'
+import * as path from 'path'
+import * as tar from 'tar-stream'
+
+const streamToPromise = require('stream-to-promise')
 
 /**
  * TransposeOptions:
@@ -36,18 +38,18 @@ const processArgString = (argString: string) => {
 }
 
 const transposeArrayRun = (options: TransposeOptions, command: parser.Command): parser.Command => {
-	const args = (<string[]>command.args).map(processArgString).join(' ')
+	const args = (command.args as string[]).map(processArgString).join(' ')
 	return {
 		name: 'RUN',
-		args: [options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat(args)
+		args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat(args)
 	}
 }
 
 const transposeStringRun = (options: TransposeOptions, command: parser.Command): parser.Command => {
- 	const processed = processArgString(<string>command.args)
+ 	const processed = processArgString(command.args as string)
 	return {
 		name: 'RUN',
-		args:	[options.containerQemuPath, "-execve", "/bin/sh", "-c"].concat([processed])
+		args:	[options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat([processed])
 	}
 }
 
@@ -63,7 +65,7 @@ const identity = (options: TransposeOptions, command: parser.Command): parser.Co
 }
 
 const commandToTranspose = (command: parser.Command): CommandTransposer => {
-	if (command.name == 'RUN') {
+	if (command.name === 'RUN') {
 		return transposeRun
 	}
 	return identity
@@ -73,7 +75,7 @@ const argsToString = (args: string | { [key: string]: string } | string[]): stri
 	if (_.isArray(args)) {
 		return '["' + args.join('","') + '"]'
 	} else {
-		return <string>args
+		return args as string
 	}
 }
 
@@ -97,17 +99,15 @@ const commandsToDockerfile = (commands: parser.Command[]): string => {
  *	OPtions to use when doing the transposing
  */
 export function transpose(dockerfile: string, options: TransposeOptions): string {
-	let output = ''
 
 	// parse the Dokerfile
 	const commands = parser.parse(dockerfile, { includeComments: false })
 
-	const firstRunIdx = _.findIndex(commands, (command) => command.name == 'RUN')
+	const firstRunIdx = _.findIndex(commands, (command) => command.name === 'RUN')
 
 	let outCommands = commands.slice(0, firstRunIdx)
 
 	outCommands.push(generateQemuCopy(options))
-
 
 	outCommands = outCommands.concat(
 		commands.slice(firstRunIdx).map(
@@ -129,39 +129,38 @@ export function normalizeTarEntry(name: string): string {
   return normalized
 }
 
+const getTarEntryHandler = (pack: tar.Pack, dockerfileName: string, opts: TransposeOptions) => {
+
+	return (header: tar.TarHeader, stream: NodeJS.ReadableStream, next: (err?: Error) => void) => {
+		streamToPromise(stream)
+		.then((buffer: Buffer) => {
+			if (normalizeTarEntry(header.name) === dockerfileName) {
+				const newDockerfile = transpose(buffer.toString(), opts)
+				pack.entry({ name: 'Dockerfile' }, newDockerfile)
+			} else {
+				pack.entry(header, buffer)
+			}
+			next()
+		})
+	}
+}
+
 export function transposeTarStream(tarStream: NodeJS.ReadableStream,
                                    options: TransposeOptions,
-                                   dockerfileName: string = 'Dockerfile'): Promise<NodeJS.ReadableStream> {
+                                   dockerfileName: string = 'Dockerfile') {
 	const extract = tar.extract()
 	const pack = tar.pack()
 
 	return new Promise<NodeJS.ReadableStream>((resolve, reject) => {
-		extract.on('entry', (header: tar.TarHeader, stream: NodeJS.ReadableStream, next: (err?: Error) => void) => {
-			if (normalizeTarEntry(header.name) == dockerfileName) {
-				// If the file is a Dockerfile, first read it into a string,
-				// transpose it, then push it back to the tar stream
-				let contents = ''
-				stream.on('data', (data: Buffer) => {
-					contents += data.toString()
-				})
-				stream.on('end', () => {
-					let newContent = transpose(contents, options)
-					pack.entry({ name: 'Dockerfile', size: newContent.length }, newContent)
-					next()
-				})
-			} else {
-				stream.pipe(pack.entry(header, next))
-			}
-		})
+
+		extract.on('entry', getTarEntryHandler(pack, dockerfileName, options))
 
 		extract.on('finish', () => {
 			pack.finalize()
 			resolve(pack)
 		})
 
-		extract.on('error', reject)
 		tarStream.pipe(extract)
 	})
 
 }
-

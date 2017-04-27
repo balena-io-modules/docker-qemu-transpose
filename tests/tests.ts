@@ -1,34 +1,35 @@
 import * as Promise from 'bluebird'
-import * as mocha from 'mocha'
 import * as chai from 'chai'
 import * as chaiAsPromised from 'chai-as-promised'
 import * as fs from 'fs'
-import * as tar from 'tar-stream'
+import * as mocha from 'mocha'
 import * as path from 'path'
+import * as tar from 'tar-stream'
 
 import * as transpose from '../src/index'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
 
-
 const opts: transpose.TransposeOptions = {
 	hostQemuPath: 'hostQemu',
 	containerQemuPath: 'containerQemu'
 }
 
+// FIXME: Also from resin-bundle-resolve. We really need to export these functions to a
+// helper lib
 function getDockerfileFromTarStream(stream: NodeJS.ReadableStream): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		const extract = tar.extract()
 		let foundDockerfile = false
 
-		extract.on('entry', (header: tar.TarHeader, stream: NodeJS.ReadableStream, next: () => void) => {
+		extract.on('entry', (header: tar.TarHeader, inputStream: NodeJS.ReadableStream, next: () => void) => {
 			if (path.normalize(header.name) === 'Dockerfile') {
 				let contents = ''
-				stream.on('data', (data: string) => {
+				inputStream.on('data', (data: string) => {
 					contents += data
 				})
-				stream.on('end', () => {
+				inputStream.on('end', () => {
 					foundDockerfile = true
 					resolve(contents)
 				})
@@ -44,7 +45,6 @@ function getDockerfileFromTarStream(stream: NodeJS.ReadableStream): Promise<stri
 		stream.pipe(extract)
 	})
 }
-
 
 describe('Transpose a Dockerfile', () => {
 
@@ -100,5 +100,10 @@ CMD bash -c "sleep 12"
 			.then((stream) => {
 				return expect(getDockerfileFromTarStream(stream)).eventually.to.equal(expectedOutput)
 			})
+	})
+
+	it('should transpose a larger tar stream', function() {
+		// This tar archive was causing the process to hang. Ensure that it ends.
+		return transpose.transposeTarStream(fs.createReadStream('./tests/test-files/larger-archive.tar'), opts)
 	})
 })
