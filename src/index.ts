@@ -5,8 +5,10 @@ import * as jsesc from 'jsesc'
 import * as _ from 'lodash'
 import * as path from 'path'
 import * as tar from 'tar-stream'
+import { EOL } from 'os'
 
 const streamToPromise = require('stream-to-promise')
+const es = require('event-stream')
 
 /**
  * TransposeOptions:
@@ -122,11 +124,11 @@ export function transpose(dockerfile: string, options: TransposeOptions): string
 // export this code to a shared module and import it in this project
 // and resin-bundle-resolve
 export function normalizeTarEntry(name: string): string {
-  const normalized = path.normalize(name)
-  if (path.isAbsolute(normalized)) {
-    return normalized.substr(normalized.indexOf('/') + 1)
-  }
-  return normalized
+	const normalized = path.normalize(name)
+	if (path.isAbsolute(normalized)) {
+		return normalized.substr(normalized.indexOf('/') + 1)
+	}
+	return normalized
 }
 
 const getTarEntryHandler = (pack: tar.Pack, dockerfileName: string, opts: TransposeOptions) => {
@@ -145,6 +147,12 @@ const getTarEntryHandler = (pack: tar.Pack, dockerfileName: string, opts: Transp
 	}
 }
 
+/**
+ * transposeTarStream: Given a tar stream, this function will extract
+ * the files, transpose the Dockerfile using the transpose function,
+ * and then re-tar the original contents and the new Dockerfile, and
+ * return a new tarStream
+ */
 export function transposeTarStream(tarStream: NodeJS.ReadableStream,
                                    options: TransposeOptions,
                                    dockerfileName: string = 'Dockerfile') {
@@ -162,5 +170,49 @@ export function transposeTarStream(tarStream: NodeJS.ReadableStream,
 
 		tarStream.pipe(extract)
 	})
+}
 
+/**
+ * getBuildThroughStream: Get a through stream, which when piped to will remove all
+ * extra output that is added as a result of this module transposing a Dockerfile.
+ *
+ * This function enables 'silent' emulated builds, with the only difference in output
+ * from a native build being that there is an extra COPY step, where the emulator is
+ * added to the container
+ */
+export function getBuildThroughStream(opts: TransposeOptions): NodeJS.ReadWriteStream {
+
+	// Regex to match against 'Step 1/5:', 'Step 1/5 :' 'Step 1:' 'Step 1 :'
+	// and all lower case versions.
+	const stepLineRegex = /^(?:step)\s\d+(?:\/\d+)?\s?:/i
+	const isStepLine = (str: string) => stepLineRegex.test(str)
+
+	// Function to strip the string matched with the regex above
+	const stripStepPrefix = (data: string): string => {
+		return data.substr(data.indexOf(':') + 1)
+	}
+
+	// Regex to match against the type of command, e.g. FROM, RUN, COPY
+	const stepCommandRegex = /^\s?(\w+)(:?\s)/i
+	// Use type-coercion here to suppress TS `may be undefined` warnings, as we know
+	// that function is only called with a value that will produce a non-undefined value
+	const getStepCommand = (str: string) => stepCommandRegex.exec(str)![1].toUpperCase()
+
+	// Regex to remove extra flags which this module adds in
+	const replaceRegexString = _.escapeRegExp(`${opts.containerQemuPath} -execve /bin/sh -c `)
+	const replaceRegex = new RegExp(replaceRegexString, 'i')
+	const replaceQemuLine = (data: string): string => {
+		return data.replace(replaceRegex, '')
+	}
+
+	return es.pipe(
+		es.mapSync(function(data: string) {
+
+			if (isStepLine(data) && getStepCommand(stripStepPrefix(data)) === 'RUN') {
+				data = replaceQemuLine(data)
+			}
+			return data
+		}),
+		es.join('\n')
+	)
 }

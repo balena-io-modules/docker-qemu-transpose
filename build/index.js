@@ -7,6 +7,7 @@ const _ = require("lodash");
 const path = require("path");
 const tar = require("tar-stream");
 const streamToPromise = require('stream-to-promise');
+const es = require('event-stream');
 const generateQemuCopy = (options) => {
     return {
         name: 'COPY',
@@ -106,6 +107,12 @@ const getTarEntryHandler = (pack, dockerfileName, opts) => {
         });
     };
 };
+/**
+ * transposeTarStream: Given a tar stream, this function will extract
+ * the files, transpose the Dockerfile using the transpose function,
+ * and then re-tar the original contents and the new Dockerfile, and
+ * return a new tarStream
+ */
 function transposeTarStream(tarStream, options, dockerfileName = 'Dockerfile') {
     const extract = tar.extract();
     const pack = tar.pack();
@@ -119,5 +126,41 @@ function transposeTarStream(tarStream, options, dockerfileName = 'Dockerfile') {
     });
 }
 exports.transposeTarStream = transposeTarStream;
+/**
+ * getBuildThroughStream: Get a through stream, which when piped to will remove all
+ * extra output that is added as a result of this module transposing a Dockerfile.
+ *
+ * This function enables 'silent' emulated builds, with the only difference in output
+ * from a native build being that there is an extra COPY step, where the emulator is
+ * added to the container
+ */
+function getBuildThroughStream(opts) {
+    // Regex to match against 'Step 1/5:', 'Step 1/5 :' 'Step 1:' 'Step 1 :'
+    // and all lower case versions.
+    const stepLineRegex = /^(?:step)\s\d+(?:\/\d+)?\s?:/i;
+    const isStepLine = (str) => stepLineRegex.test(str);
+    // Function to strip the string matched with the regex above
+    const stripStepPrefix = (data) => {
+        return data.substr(data.indexOf(':') + 1);
+    };
+    // Regex to match against the type of command, e.g. FROM, RUN, COPY
+    const stepCommandRegex = /^\s?(\w+)(:?\s)/i;
+    // Use type-coercion here to suppress TS `may be undefined` warnings, as we know
+    // that function is only called with a value that will produce a non-undefined value
+    const getStepCommand = (str) => stepCommandRegex.exec(str)[1].toUpperCase();
+    // Regex to remove extra flags which this module adds in
+    const replaceRegexString = _.escapeRegExp(`${opts.containerQemuPath} -execve /bin/sh -c `);
+    const replaceRegex = new RegExp(replaceRegexString, 'i');
+    const replaceQemuLine = (data) => {
+        return data.replace(replaceRegex, '');
+    };
+    return es.pipe(es.mapSync(function (data) {
+        if (isStepLine(data) && getStepCommand(stripStepPrefix(data)) === 'RUN') {
+            data = replaceQemuLine(data);
+        }
+        return data;
+    }), es.join('\n'));
+}
+exports.getBuildThroughStream = getBuildThroughStream;
 
 //# sourceMappingURL=index.js.map
