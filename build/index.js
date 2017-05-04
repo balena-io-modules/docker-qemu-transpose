@@ -155,6 +155,7 @@ function getBuildThroughStream(opts) {
         return data.replace(replaceRegex, '');
     };
     return es.pipe(es.mapSync(function (data) {
+        data = data.toString();
         if (isStepLine(data) && getStepCommand(stripStepPrefix(data)) === 'RUN') {
             data = replaceQemuLine(data);
         }

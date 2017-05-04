@@ -206,7 +206,8 @@ export function getBuildThroughStream(opts: TransposeOptions): NodeJS.ReadWriteS
 	}
 
 	return es.pipe(
-		es.mapSync(function(data: string) {
+		es.mapSync(function(data: string | Buffer) {
+			data = data.toString()
 
 			if (isStepLine(data) && getStepCommand(stripStepPrefix(data)) === 'RUN') {
 				data = replaceQemuLine(data)
