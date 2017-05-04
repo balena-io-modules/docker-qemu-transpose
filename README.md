@@ -13,6 +13,22 @@ emulation, will produce a Dockerfile which will run seamlessly.
 Given a Dockerfile and tranpose options, produce a Dockerfile which will run on
 the same architecture as the qemu provided in options (detailed below).
 
+* `transposeTarStream(tarStream: ReadableStream, options: TransposeOptions, dockerfileName = 'Dockerfile'): Promise<ReadableStream>`
+
+Given a tar archive stream, this function will extract the Dockerfile (or
+file named with the given `dockerfileName` parameter) and transpose it. It then
+creates a new tar stream, and returns it wrapped in a bluebird Promise.
+
+* `getBuildThroughStream(options: TransposeOptions): ReadWriteStream`
+
+Get a through stream, which when piped to will remove all
+extra output that is added as a result of this module transposing a Dockerfile.
+
+This function enables 'silent' emulated builds, with the only difference in output
+from a native build being that there is an extra COPY step, where the emulator is
+added to the container
+
+
 ## Options
 
 * `TranposeOptions` is an interface with two required fields;
