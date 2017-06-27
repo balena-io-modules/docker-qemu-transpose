@@ -46,7 +46,12 @@ const commandToTranspose = (command) => {
     }
     return identity;
 };
-const argsToString = (args) => {
+const argsToString = (args, commandName) => {
+    // ARG lines get parsed into an array, but this breaks the meaning in the output Dockerfile,
+    // handle these seperately
+    if (commandName === 'ARG') {
+        return args[0];
+    }
     if (_.isArray(args)) {
         return '["' + args.join('","') + '"]';
     }
@@ -57,7 +62,7 @@ const argsToString = (args) => {
 const commandsToDockerfile = (commands) => {
     let dockerfile = '';
     commands.map((command) => {
-        dockerfile += `${command.name} ${argsToString(command.args)}\n`;
+        dockerfile += `${command.name} ${argsToString(command.args, command.name)}\n`;
     });
     return dockerfile;
 };
