@@ -4,6 +4,7 @@
   "description": "Transpose a Dockerfile to use qemu-linux-user and emulate a build",
   "main": "build/index.js",
   "scripts": {
+    "precommit": "prettier --use-tabs --single-quote --write \"{src,typings}/**/*.ts\"",
     "test": "gulp test",
     "build": "gulp build"
   },
@@ -33,7 +34,9 @@
     "gulp-sourcemaps": "^2.5.1",
     "gulp-typescript": "^3.1.6",
     "gulp-util": "^3.0.8",
+    "husky": "^0.14.1",
     "mocha": "^3.3.0",
+    "prettier": "^1.5.2",
     "ts-node": "^3.0.2",
     "typescript": "^2.2.2"
   },
