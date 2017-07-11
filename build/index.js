@@ -11,7 +11,7 @@ const es = require('event-stream');
 const generateQemuCopy = (options) => {
     return {
         name: 'COPY',
-        args: [options.hostQemuPath, options.containerQemuPath]
+        args: [options.hostQemuPath, options.containerQemuPath],
     };
 };
 const processArgString = (argString) => {
@@ -21,14 +21,16 @@ const transposeArrayRun = (options, command) => {
     const args = command.args.map(processArgString).join(' ');
     return {
         name: 'RUN',
-        args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat(args)
+        args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat(args),
     };
 };
 const transposeStringRun = (options, command) => {
     const processed = processArgString(command.args);
     return {
         name: 'RUN',
-        args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat([processed])
+        args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat([
+            processed,
+        ]),
     };
 };
 const transposeRun = (options, command) => {
@@ -61,7 +63,7 @@ const argsToString = (args, commandName) => {
 };
 const commandsToDockerfile = (commands) => {
     let dockerfile = '';
-    commands.map((command) => {
+    commands.map(command => {
         dockerfile += `${command.name} ${argsToString(command.args, command.name)}\n`;
     });
     return dockerfile;
@@ -82,7 +84,9 @@ function transpose(dockerfile, options) {
     const firstRunIdx = _.findIndex(commands, (command) => command.name === 'RUN');
     let outCommands = commands.slice(0, firstRunIdx);
     outCommands.push(generateQemuCopy(options));
-    outCommands = outCommands.concat(commands.slice(firstRunIdx).map((command) => commandToTranspose(command)(options, command)));
+    outCommands = outCommands.concat(commands
+        .slice(firstRunIdx)
+        .map(command => commandToTranspose(command)(options, command)));
     return commandsToDockerfile(outCommands);
 }
 exports.transpose = transpose;
@@ -99,8 +103,7 @@ function normalizeTarEntry(name) {
 exports.normalizeTarEntry = normalizeTarEntry;
 const getTarEntryHandler = (pack, dockerfileName, opts) => {
     return (header, stream, next) => {
-        streamToPromise(stream)
-            .then((buffer) => {
+        streamToPromise(stream).then((buffer) => {
             if (normalizeTarEntry(header.name) === dockerfileName) {
                 const newDockerfile = transpose(buffer.toString(), opts);
                 pack.entry({ name: 'Dockerfile' }, newDockerfile);
