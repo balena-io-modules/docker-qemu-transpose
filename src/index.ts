@@ -236,10 +236,14 @@ export function getBuildThroughStream(
 
 	// Regex to match against the type of command, e.g. FROM, RUN, COPY
 	const stepCommandRegex = /^\s?(\w+)(:?\s)/i;
-	// Use type-coercion here to suppress TS `may be undefined` warnings, as we know
-	// that function is only called with a value that will produce a non-undefined value
-	const getStepCommand = (str: string) =>
-		stepCommandRegex.exec(str)![1].toUpperCase();
+	const getStepCommand = (str: string): string => {
+		const match = stepCommandRegex.exec(str);
+		if (match != null) {
+			return match[1].toUpperCase();
+		} else {
+			return '';
+		}
+	};
 
 	// Regex to remove extra flags which this module adds in
 	const replaceRegexString = _.escapeRegExp(

@@ -11,7 +11,7 @@ const es = require('event-stream');
 const generateQemuCopy = (options) => {
     return {
         name: 'COPY',
-        args: [options.hostQemuPath, options.containerQemuPath],
+        args: [options.hostQemuPath, options.containerQemuPath]
     };
 };
 const processArgString = (argString) => {
@@ -21,7 +21,7 @@ const transposeArrayRun = (options, command) => {
     const args = command.args.map(processArgString).join(' ');
     return {
         name: 'RUN',
-        args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat(args),
+        args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat(args)
     };
 };
 const transposeStringRun = (options, command) => {
@@ -29,8 +29,8 @@ const transposeStringRun = (options, command) => {
     return {
         name: 'RUN',
         args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat([
-            processed,
-        ]),
+            processed
+        ])
     };
 };
 const transposeRun = (options, command) => {
@@ -153,9 +153,15 @@ function getBuildThroughStream(opts) {
     };
     // Regex to match against the type of command, e.g. FROM, RUN, COPY
     const stepCommandRegex = /^\s?(\w+)(:?\s)/i;
-    // Use type-coercion here to suppress TS `may be undefined` warnings, as we know
-    // that function is only called with a value that will produce a non-undefined value
-    const getStepCommand = (str) => stepCommandRegex.exec(str)[1].toUpperCase();
+    const getStepCommand = (str) => {
+        const match = stepCommandRegex.exec(str);
+        if (match != null) {
+            return match[1].toUpperCase();
+        }
+        else {
+            return '';
+        }
+    };
     // Regex to remove extra flags which this module adds in
     const replaceRegexString = _.escapeRegExp(`${opts.containerQemuPath} -execve /bin/sh -c `);
     const replaceRegex = new RegExp(replaceRegexString, 'i');
