@@ -3,6 +3,7 @@
   "version": "0.3.1",
   "description": "Transpose a Dockerfile to use qemu-linux-user and emulate a build",
   "main": "build/index.js",
+  "types": "src/index.ts",
   "scripts": {
     "precommit": "prettier --use-tabs --single-quote --write \"{src,typings}/**/*.ts\"",
     "test": "gulp test",
