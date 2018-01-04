@@ -1,6 +1,6 @@
 {
   "name": "docker-qemu-transpose",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Transpose a Dockerfile to use qemu-linux-user and emulate a build",
   "main": "build/index.js",
   "types": "src/index.ts",
