@@ -1,6 +1,6 @@
 {
   "name": "docker-qemu-transpose",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Transpose a Dockerfile to use qemu-linux-user and emulate a build",
   "main": "build/index.js",
   "types": "src/index.ts",
@@ -9,6 +9,10 @@
     "test": "gulp test",
     "build": "gulp build"
   },
+  "files": [
+    "build",
+    "src"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/resin-io-modules/docker-qemu-transpose.git"
