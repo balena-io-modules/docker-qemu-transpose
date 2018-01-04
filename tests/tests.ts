@@ -52,12 +52,16 @@ describe('Transpose a Dockerfile', () => {
 		const dockerfile = `
 		FROM ubuntu
 		COPY my-file my-container-file
+		ENV myvar multi word value with a "
+		LABEL version=1.0
 		RUN apt-get install something
 		RUN ["ls", "-al"]
 		`
 
 		const expectedOutput = `FROM ubuntu
 COPY ["my-file","my-container-file"]
+ENV myvar="multi word value with a \\""
+LABEL version="1.0"
 COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
 RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get install something"]
 RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","ls -al"]

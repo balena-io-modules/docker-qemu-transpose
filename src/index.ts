@@ -102,6 +102,11 @@ const argsToString = (
 
 	if (_.isArray(args)) {
 		return '["' + (args as string[]).join('","') + '"]';
+	} else if (_.isObject(args)) {
+		return _.map(args, (value, key) => {
+			let escapedValue = JSON.stringify(value);
+			return `${key}=${escapedValue}`
+		}).join(' ');
 	} else {
 		return args as string;
 	}
