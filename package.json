@@ -9,6 +9,10 @@
     "test": "gulp test",
     "build": "gulp build"
   },
+  "files": [
+    "build",
+    "src"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/resin-io-modules/docker-qemu-transpose.git"
