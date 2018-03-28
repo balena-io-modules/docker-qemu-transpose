@@ -103,7 +103,7 @@ const argsToString = (
 	if (_.isArray(args)) {
 		return '["' + (args as string[]).join('","') + '"]';
 	} else if (_.isObject(args)) {
-		return _.map(args, (value, key) => {
+		return _.map(args, (value: string, key: string) => {
 			let escapedValue = JSON.stringify(value);
 			return `${key}=${escapedValue}`
 		}).join(' ');
@@ -141,20 +141,16 @@ export function transpose(
 	// parse the Dokerfile
 	const commands = parser.parse(dockerfile, { includeComments: false });
 
-	const firstRunIdx = _.findIndex(
-		commands,
-		(command: any) => command.name === 'RUN'
-	);
-
-	let outCommands = commands.slice(0, firstRunIdx);
-
-	outCommands.push(generateQemuCopy(options));
-
-	outCommands = outCommands.concat(
-		commands
-			.slice(firstRunIdx)
-			.map(command => commandToTranspose(command)(options, command))
-	);
+	const outCommands: parser.Command[] = [];
+	const copyCommand = generateQemuCopy(options);
+	commands.forEach((c) => {
+		if (c.name === 'FROM') {
+			outCommands.push(c);
+			outCommands.push(copyCommand);
+		} else {
+			outCommands.push(commandToTranspose(c)(options, c));
+		}
+	});
 
 	return commandsToDockerfile(outCommands);
 }

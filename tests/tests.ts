@@ -59,10 +59,10 @@ describe('Transpose a Dockerfile', () => {
 		`
 
 		const expectedOutput = `FROM ubuntu
+COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
 COPY ["my-file","my-container-file"]
 ENV myvar="multi word value with a \\""
 LABEL version="1.0"
-COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
 RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get install something"]
 RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","ls -al"]
 `
@@ -85,14 +85,33 @@ RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","bash -c echo a \\"str
 		expect(transpose.transpose(dockerfile, opts)).to.equal(expectedOutput)
 	})
 
+	it('should support multistage dockerfiles', () => {
+		const dockerfile = `FROM ubuntu
+		RUN apt-get update
+		FROM alpine
+		RUN apk add curl
+		CMD bash
+		`;
+
+		const expectedOutput = `FROM ubuntu
+COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get update"]
+FROM alpine
+COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apk add curl"]
+CMD bash
+`;
+		expect(transpose.transpose(dockerfile, opts)).to.equal(expectedOutput);
+	})
+
 })
 
 describe('Transpose a tar stream', () => {
 
 	it('should transpose a valid tar stream', () => {
 		const expectedOutput = `FROM ubuntu
-WORKDIR /usr/src/app
 COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+WORKDIR /usr/src/app
 RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","touch file && bash -c \\"something\\""]
 RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get update && apt-get install build-essential"]
 CMD bash -c "sleep 12"
