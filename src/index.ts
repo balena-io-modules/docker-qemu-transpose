@@ -111,7 +111,7 @@ const argsToString = (
 	} else if (_.isObject(args)) {
 		return _.map(args, (value: string, key: string) => {
 			let escapedValue = JSON.stringify(value);
-			return `${key}=${escapedValue}`
+			return `${key}=${escapedValue}`;
 		}).join(' ');
 	} else {
 		return args as string;
