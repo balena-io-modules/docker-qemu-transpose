@@ -15,7 +15,7 @@ const OPTIONS = {
 }
 
 gulp.task('test', () => {
-	gulp.src('tests/tests.ts')
+	return gulp.src('tests/tests.ts')
 		.pipe(gmocha({
 			compilers: [
 				'ts:ts-node/register'
@@ -29,7 +29,7 @@ gulp.task('clean', () => {
 })
 
 gulp.task('typescript', () => {
-	tsProject.src()
+	return tsProject.src()
 	.pipe(sourcemaps.init())
 	.pipe(tsProject()).on('error', gutil.log)
 	.pipe(sourcemaps.write('./', {
