@@ -101,7 +101,13 @@ const argsToString = (
 	}
 
 	if (_.isArray(args)) {
-		return '["' + (args as string[]).join('","') + '"]';
+		let ret = '';
+		// Handle command meta-arguments (like --from=stage)
+		if (args[0] != null && args[0].startsWith('--')) {
+			ret += args[0] + ' ';
+			args = args.slice(1);
+		}
+		return ret + '["' + (args as string[]).join('","') + '"]';
 	} else if (_.isObject(args)) {
 		return _.map(args, (value: string, key: string) => {
 			let escapedValue = JSON.stringify(value);
