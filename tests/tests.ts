@@ -106,6 +106,17 @@ CMD bash
 
 })
 
+describe('It should support advanced dockerfiles', () => {
+	it('should support copy from directives', () => {
+		const dockerfile = `COPY --from=builder src dest`;
+
+		const expectedOutput = `COPY --from=builder ["src","dest"]
+`;
+
+		expect(transpose.transpose(dockerfile, opts)).to.equal(expectedOutput);
+	})
+})
+
 describe('Transpose a tar stream', () => {
 
 	it('should transpose a valid tar stream', () => {
