@@ -36,6 +36,9 @@ jobs:
       - attach_workspace:
           at: $CIRCLE_WORKING_DIRECTORY
       - run:
+          name: Build output
+          command: npm run build
+      - run:
           name: Login to npm
           command: |
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
