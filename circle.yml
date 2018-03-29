@@ -38,6 +38,7 @@ jobs:
       - run:
           name: Build output
           command: npm run build
+          working_directory: $CIRCLE_WORKING_DIRECTORY/node-6
       - run:
           name: Login to npm
           command: |
