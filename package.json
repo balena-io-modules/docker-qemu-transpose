@@ -5,6 +5,7 @@
   "main": "build/index.js",
   "types": "src/index.ts",
   "scripts": {
+    "prepare": "gulp build",
     "precommit": "prettier --use-tabs --single-quote --write \"{src,typings}/**/*.ts\"",
     "test": "gulp test",
     "build": "gulp build"
