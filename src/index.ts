@@ -28,13 +28,13 @@ export interface TransposeOptions {
 
 type CommandTransposer = (
 	options: TransposeOptions,
-	command: parser.Command
+	command: parser.Command,
 ) => parser.Command;
 
 const generateQemuCopy = (options: TransposeOptions): parser.Command => {
 	return {
 		name: 'COPY',
-		args: [options.hostQemuPath, options.containerQemuPath]
+		args: [options.hostQemuPath, options.containerQemuPath],
 	};
 };
 
@@ -44,31 +44,31 @@ const processArgString = (argString: string) => {
 
 const transposeArrayRun = (
 	options: TransposeOptions,
-	command: parser.Command
+	command: parser.Command,
 ): parser.Command => {
 	const args = (command.args as string[]).map(processArgString).join(' ');
 	return {
 		name: 'RUN',
-		args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat(args)
+		args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat(args),
 	};
 };
 
 const transposeStringRun = (
 	options: TransposeOptions,
-	command: parser.Command
+	command: parser.Command,
 ): parser.Command => {
 	const processed = processArgString(command.args as string);
 	return {
 		name: 'RUN',
 		args: [options.containerQemuPath, '-execve', '/bin/sh', '-c'].concat([
-			processed
-		])
+			processed,
+		]),
 	};
 };
 
 const transposeRun = (
 	options: TransposeOptions,
-	command: parser.Command
+	command: parser.Command,
 ): parser.Command => {
 	if (_.isArray(command.args)) {
 		return transposeArrayRun(options, command);
@@ -78,7 +78,7 @@ const transposeRun = (
 
 const identity = (
 	options: TransposeOptions,
-	command: parser.Command
+	command: parser.Command,
 ): parser.Command => {
 	return command;
 };
@@ -92,7 +92,7 @@ const commandToTranspose = (command: parser.Command): CommandTransposer => {
 
 const argsToString = (
 	args: string | { [key: string]: string } | string[],
-	commandName: string
+	commandName: string,
 ): string => {
 	// ARG lines get parsed into an array, but this breaks the meaning in the output Dockerfile,
 	// handle these seperately
@@ -124,7 +124,7 @@ const commandsToDockerfile = (commands: parser.Command[]): string => {
 	commands.map(command => {
 		dockerfile += `${command.name} ${argsToString(
 			command.args,
-			command.name
+			command.name,
 		)}\n`;
 	});
 	return dockerfile;
@@ -142,14 +142,14 @@ const commandsToDockerfile = (commands: parser.Command[]): string => {
  */
 export function transpose(
 	dockerfile: string,
-	options: TransposeOptions
+	options: TransposeOptions,
 ): string {
 	// parse the Dokerfile
 	const commands = parser.parse(dockerfile, { includeComments: false });
 
 	const outCommands: parser.Command[] = [];
 	const copyCommand = generateQemuCopy(options);
-	commands.forEach((c) => {
+	commands.forEach(c => {
 		if (c.name === 'FROM') {
 			outCommands.push(c);
 			outCommands.push(copyCommand);
@@ -175,12 +175,12 @@ export function normalizeTarEntry(name: string): string {
 const getTarEntryHandler = (
 	pack: tar.Pack,
 	dockerfileName: string,
-	opts: TransposeOptions
+	opts: TransposeOptions,
 ) => {
 	return (
 		header: tar.TarHeader,
 		stream: NodeJS.ReadableStream,
-		next: (err?: Error) => void
+		next: (err?: Error) => void,
 	) => {
 		streamToPromise(stream).then((buffer: Buffer) => {
 			if (normalizeTarEntry(header.name) === dockerfileName) {
@@ -203,7 +203,7 @@ const getTarEntryHandler = (
 export function transposeTarStream(
 	tarStream: NodeJS.ReadableStream,
 	options: TransposeOptions,
-	dockerfileName: string = 'Dockerfile'
+	dockerfileName: string = 'Dockerfile',
 ) {
 	const extract = tar.extract();
 	const pack = tar.pack();
@@ -229,7 +229,7 @@ export function transposeTarStream(
  * added to the container
  */
 export function getBuildThroughStream(
-	opts: TransposeOptions
+	opts: TransposeOptions,
 ): NodeJS.ReadWriteStream {
 	// Regex to match against 'Step 1/5:', 'Step 1/5 :' 'Step 1:' 'Step 1 :'
 	// and all lower case versions.
@@ -254,7 +254,7 @@ export function getBuildThroughStream(
 
 	// Regex to remove extra flags which this module adds in
 	const replaceRegexString = _.escapeRegExp(
-		`${opts.containerQemuPath} -execve /bin/sh -c `
+		`${opts.containerQemuPath} -execve /bin/sh -c `,
 	);
 	const replaceRegex = new RegExp(replaceRegexString, 'i');
 	const replaceQemuLine = (data: string): string => {
@@ -270,6 +270,6 @@ export function getBuildThroughStream(
 			}
 			return data;
 		}),
-		es.join('\n')
+		es.join('\n'),
 	);
 }

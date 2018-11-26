@@ -23,7 +23,7 @@ declare module 'tar-stream' {
 
 		pipe<T extends NodeJS.WritableStream>(
 			stream: T,
-			options?: { end: boolean }
+			options?: { end: boolean },
 		): T;
 	}
 
