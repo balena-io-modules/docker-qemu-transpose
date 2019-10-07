@@ -1,3 +1,20 @@
+/**
+ * @license
+ * Copyright 2017-2019 Balena Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import * as Promise from 'bluebird';
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
@@ -28,7 +45,7 @@ function getDockerfileFromTarStream(
 		extract.on(
 			'entry',
 			(
-				header: tar.TarHeader,
+				header: tar.Headers,
 				inputStream: NodeJS.ReadableStream,
 				next: () => void,
 			) => {
@@ -133,9 +150,11 @@ RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get update && apt
 CMD bash -c "sleep 12"
 `;
 		// open a tar stream
-		const stream = fs.createReadStream('./tests/test-files/valid-archive.tar');
+		const tarStream = fs.createReadStream(
+			'./tests/test-files/valid-archive.tar',
+		);
 
-		return transpose.transposeTarStream(stream, opts).then(stream => {
+		return transpose.transposeTarStream(tarStream, opts).then(stream => {
 			return expect(getDockerfileFromTarStream(stream)).eventually.to.equal(
 				expectedOutput,
 			);
