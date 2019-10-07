@@ -19,8 +19,8 @@ import * as Promise from 'bluebird';
 import * as parser from 'docker-file-parser';
 import * as jsesc from 'jsesc';
 import * as _ from 'lodash';
-import * as path from 'path';
 import * as tar from 'tar-stream';
+import { normalizeTarEntry } from 'tar-utils';
 
 /**
  * TransposeOptions:
@@ -36,6 +36,12 @@ export interface TransposeOptions {
 	 * containerQemuPath: Where to add the qemu binary on-container
 	 */
 	containerQemuPath: string;
+
+	/**
+	 * Optional file mode (permission) to assign to the Qemu executable,
+	 * e.g. 0o555. Useful on Windows, when Unix-like permissions are lost.
+	 */
+	qemuFileMode?: number;
 }
 
 interface Command extends Pick<parser.CommandEntry, 'name' | 'args'> {}
@@ -167,17 +173,6 @@ export function transpose(
 	return commandsToDockerfile(outCommands);
 }
 
-// FIXME: This is taken from resin-io-modules/resin-bundle-resolve
-// export this code to a shared module and import it in this project
-// and resin-bundle-resolve
-export function normalizeTarEntry(name: string): string {
-	const normalized = path.normalize(name);
-	if (path.isAbsolute(normalized)) {
-		return normalized.substr(normalized.indexOf('/') + 1);
-	}
-	return normalized;
-}
-
 const getTarEntryHandler = (
 	pack: tar.Pack,
 	dockerfileName: string,
@@ -190,10 +185,14 @@ const getTarEntryHandler = (
 		next: (err?: Error) => void,
 	) => {
 		streamToPromise(stream).then((buffer: Buffer) => {
-			if (normalizeTarEntry(header.name) === dockerfileName) {
+			const name = normalizeTarEntry(header.name);
+			if (name === dockerfileName) {
 				const newDockerfile = transpose(buffer.toString(), opts);
 				pack.entry({ name: 'Dockerfile' }, newDockerfile);
 			} else {
+				if (name === opts.hostQemuPath && opts.qemuFileMode) {
+					header.mode = opts.qemuFileMode;
+				}
 				pack.entry(header, buffer);
 			}
 			next();
