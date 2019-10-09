@@ -1,18 +1,30 @@
+/**
+ * @license
+ * Copyright 2017-2019 Balena Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import * as Promise from 'bluebird';
 import * as parser from 'docker-file-parser';
-import * as fs from 'fs';
 import * as jsesc from 'jsesc';
 import * as _ from 'lodash';
-import * as path from 'path';
 import * as tar from 'tar-stream';
-import { EOL } from 'os';
-
-const streamToPromise = require('stream-to-promise');
-const es = require('event-stream');
+import { normalizeTarEntry } from 'tar-utils';
 
 /**
  * TransposeOptions:
- *	Options to be passed to the transpose module
+ * Options to be passed to the transpose module
  */
 export interface TransposeOptions {
 	/**
@@ -24,14 +36,22 @@ export interface TransposeOptions {
 	 * containerQemuPath: Where to add the qemu binary on-container
 	 */
 	containerQemuPath: string;
+
+	/**
+	 * Optional file mode (permission) to assign to the Qemu executable,
+	 * e.g. 0o555. Useful on Windows, when Unix-like permissions are lost.
+	 */
+	qemuFileMode?: number;
 }
+
+interface Command extends Pick<parser.CommandEntry, 'name' | 'args'> {}
 
 type CommandTransposer = (
 	options: TransposeOptions,
-	command: parser.Command,
-) => parser.Command;
+	command: Command,
+) => Command;
 
-const generateQemuCopy = (options: TransposeOptions): parser.Command => {
+const generateQemuCopy = (options: TransposeOptions): Command => {
 	return {
 		name: 'COPY',
 		args: [options.hostQemuPath, options.containerQemuPath],
@@ -44,8 +64,8 @@ const processArgString = (argString: string) => {
 
 const transposeArrayRun = (
 	options: TransposeOptions,
-	command: parser.Command,
-): parser.Command => {
+	command: Command,
+): Command => {
 	const args = (command.args as string[]).map(processArgString).join(' ');
 	return {
 		name: 'RUN',
@@ -55,8 +75,8 @@ const transposeArrayRun = (
 
 const transposeStringRun = (
 	options: TransposeOptions,
-	command: parser.Command,
-): parser.Command => {
+	command: Command,
+): Command => {
 	const processed = processArgString(command.args as string);
 	return {
 		name: 'RUN',
@@ -66,24 +86,18 @@ const transposeStringRun = (
 	};
 };
 
-const transposeRun = (
-	options: TransposeOptions,
-	command: parser.Command,
-): parser.Command => {
+const transposeRun = (options: TransposeOptions, command: Command): Command => {
 	if (_.isArray(command.args)) {
 		return transposeArrayRun(options, command);
 	}
 	return transposeStringRun(options, command);
 };
 
-const identity = (
-	options: TransposeOptions,
-	command: parser.Command,
-): parser.Command => {
+const identity = (options: TransposeOptions, command: Command): Command => {
 	return command;
 };
 
-const commandToTranspose = (command: parser.Command): CommandTransposer => {
+const commandToTranspose = (command: Command): CommandTransposer => {
 	if (command.name === 'RUN') {
 		return transposeRun;
 	}
@@ -110,7 +124,7 @@ const argsToString = (
 		return ret + '["' + (args as string[]).join('","') + '"]';
 	} else if (_.isObject(args)) {
 		return _.map(args, (value: string, key: string) => {
-			let escapedValue = JSON.stringify(value);
+			const escapedValue = JSON.stringify(value);
 			return `${key}=${escapedValue}`;
 		}).join(' ');
 	} else {
@@ -118,7 +132,7 @@ const argsToString = (
 	}
 };
 
-const commandsToDockerfile = (commands: parser.Command[]): string => {
+const commandsToDockerfile = (commands: Command[]): string => {
 	let dockerfile = '';
 
 	commands.map(command => {
@@ -132,13 +146,11 @@ const commandsToDockerfile = (commands: parser.Command[]): string => {
 
 /**
  * transpose:
- *	Given a string representing a dockerfile, transpose it to use qemu
- *	rather than native, to enable emulated builds
+ * Given a string representing a dockerfile, transpose it to use qemu
+ * rather than native, to enable emulated builds
  *
- * @param dockerfile
- *	A string representing the dockerfile
- * @param options
- *	OPtions to use when doing the transposing
+ * @param dockerfile A string representing the dockerfile
+ * @param options Options to use when doing the transposing
  */
 export function transpose(
 	dockerfile: string,
@@ -147,7 +159,7 @@ export function transpose(
 	// parse the Dokerfile
 	const commands = parser.parse(dockerfile, { includeComments: false });
 
-	const outCommands: parser.Command[] = [];
+	const outCommands: Command[] = [];
 	const copyCommand = generateQemuCopy(options);
 	commands.forEach(c => {
 		if (c.name === 'FROM') {
@@ -161,32 +173,26 @@ export function transpose(
 	return commandsToDockerfile(outCommands);
 }
 
-// FIXME: This is taken from resin-io-modules/resin-bundle-resolve
-// export this code to a shared module and import it in this project
-// and resin-bundle-resolve
-export function normalizeTarEntry(name: string): string {
-	const normalized = path.normalize(name);
-	if (path.isAbsolute(normalized)) {
-		return normalized.substr(normalized.indexOf('/') + 1);
-	}
-	return normalized;
-}
-
 const getTarEntryHandler = (
 	pack: tar.Pack,
 	dockerfileName: string,
 	opts: TransposeOptions,
 ) => {
+	const streamToPromise = require('stream-to-promise');
 	return (
-		header: tar.TarHeader,
+		header: tar.Headers,
 		stream: NodeJS.ReadableStream,
 		next: (err?: Error) => void,
 	) => {
 		streamToPromise(stream).then((buffer: Buffer) => {
-			if (normalizeTarEntry(header.name) === dockerfileName) {
+			const name = normalizeTarEntry(header.name);
+			if (name === dockerfileName) {
 				const newDockerfile = transpose(buffer.toString(), opts);
 				pack.entry({ name: 'Dockerfile' }, newDockerfile);
 			} else {
+				if (name === opts.hostQemuPath && opts.qemuFileMode) {
+					header.mode = opts.qemuFileMode;
+				}
 				pack.entry(header, buffer);
 			}
 			next();
@@ -231,6 +237,7 @@ export function transposeTarStream(
 export function getBuildThroughStream(
 	opts: TransposeOptions,
 ): NodeJS.ReadWriteStream {
+	const es = require('event-stream');
 	// Regex to match against 'Step 1/5:', 'Step 1/5 :' 'Step 1:' 'Step 1 :'
 	// and all lower case versions.
 	const stepLineRegex = /^(?:step)\s\d+(?:\/\d+)?\s?:/i;
