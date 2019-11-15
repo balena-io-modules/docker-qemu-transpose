@@ -104,22 +104,21 @@ const commandToTranspose = (command: Command): CommandTransposer => {
 	return identity;
 };
 
+const spaceSeparatedArrayCommands = ['ARG', 'EXPOSE'];
+
 const argsToString = (
 	args: string | { [key: string]: string } | string[],
 	commandName: string,
 ): string => {
-	// ARG lines get parsed into an array, but this breaks the meaning in the output Dockerfile,
-	// handle these seperately
-	if (commandName === 'ARG') {
-		return (args as string[])[0];
-	}
-
 	if (_.isArray(args)) {
 		let ret = '';
 		// Handle command meta-arguments (like --from=stage)
 		if (args[0] != null && args[0].startsWith('--')) {
 			ret += args[0] + ' ';
 			args = args.slice(1);
+		}
+		if (spaceSeparatedArrayCommands.includes(commandName)) {
+			return ret + args.join(' ');
 		}
 		return ret + '["' + (args as string[]).join('","') + '"]';
 	} else if (_.isObject(args)) {
