@@ -18,6 +18,7 @@
 import * as Promise from 'bluebird';
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
+import { stripIndents } from 'common-tags';
 import * as fs from 'fs';
 import * as mocha from 'mocha';
 import * as path from 'path';
@@ -74,67 +75,74 @@ function getDockerfileFromTarStream(
 
 describe('Transpose a Dockerfile', () => {
 	it('should transpose a Dockerfile', () => {
-		const dockerfile = `
-		FROM ubuntu
-		COPY my-file my-container-file
-		ENV myvar multi word value with a "
-		LABEL version=1.0
-		RUN apt-get install something
-		RUN ["ls", "-al"]
-		`;
+		const dockerfile = stripIndents`
+			FROM ubuntu
+			COPY my-file my-container-file
+			ENV myvar multi word value with a "
+			LABEL version=1.0
+			RUN apt-get install something
+			RUN ["ls", "-al"]
+			`;
 
-		const expectedOutput = `FROM ubuntu
-COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
-COPY ["my-file","my-container-file"]
-ENV myvar="multi word value with a \\""
-LABEL version="1.0"
-RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get install something"]
-RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","ls -al"]
-`;
+		const expectedOutput =
+			stripIndents`
+			FROM ubuntu
+			COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+			COPY ["my-file","my-container-file"]
+			ENV myvar="multi word value with a \\""
+			LABEL version="1.0"
+			RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get install something"]
+			RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","ls -al"]
+			` + '\n';
 
 		expect(transpose.transpose(dockerfile, opts)).to.equal(expectedOutput);
 	});
 
 	it('should escape double quotes', () => {
-		const dockerfile = `FROM ubuntu
-		RUN bash -c "ls -l"
-		RUN ["bash", "-c", "echo", "a \\"string\\" with \\"quotes\\""]
-		`;
+		const dockerfile = stripIndents`
+			FROM ubuntu
+			RUN bash -c "ls -l"
+			RUN ["bash", "-c", "echo", "a \\"string\\" with \\"quotes\\""]
+			`;
 
-		const expectedOutput = `FROM ubuntu
-COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
-RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","bash -c \\"ls -l\\""]
-RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","bash -c echo a \\"string\\" with \\"quotes\\""]
-`;
+		const expectedOutput =
+			stripIndents`
+			FROM ubuntu
+			COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+			RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","bash -c \\"ls -l\\""]
+			RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","bash -c echo a \\"string\\" with \\"quotes\\""]
+			` + '\n';
 		expect(transpose.transpose(dockerfile, opts)).to.equal(expectedOutput);
 	});
 
 	it('should support multistage dockerfiles', () => {
-		const dockerfile = `FROM ubuntu
-		RUN apt-get update
-		FROM alpine
-		RUN apk add curl
-		CMD bash
-		`;
+		const dockerfile = stripIndents`
+			FROM ubuntu
+			RUN apt-get update
+			FROM alpine
+			RUN apk add curl
+			CMD bash
+			`;
 
-		const expectedOutput = `FROM ubuntu
-COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
-RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get update"]
-FROM alpine
-COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
-RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apk add curl"]
-CMD bash
-`;
+		const expectedOutput =
+			stripIndents`
+			FROM ubuntu
+			COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+			RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get update"]
+			FROM alpine
+			COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+			RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apk add curl"]
+			CMD bash
+			` + '\n';
 		expect(transpose.transpose(dockerfile, opts)).to.equal(expectedOutput);
 	});
 });
 
 describe('It should support advanced dockerfiles', () => {
 	it('should support copy from directives', () => {
-		const dockerfile = `COPY --from=builder src dest`;
+		const dockerfile = 'COPY --from=builder src dest';
 
-		const expectedOutput = `COPY --from=builder ["src","dest"]
-`;
+		const expectedOutput = 'COPY --from=builder ["src","dest"]\n';
 
 		expect(transpose.transpose(dockerfile, opts)).to.equal(expectedOutput);
 	});
@@ -142,13 +150,15 @@ describe('It should support advanced dockerfiles', () => {
 
 describe('Transpose a tar stream', () => {
 	it('should transpose a valid tar stream', () => {
-		const expectedOutput = `FROM ubuntu
-COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
-WORKDIR /usr/src/app
-RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","touch file && bash -c \\"something\\""]
-RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get update && apt-get install build-essential"]
-CMD bash -c "sleep 12"
-`;
+		const expectedOutput =
+			stripIndents`
+			FROM ubuntu
+			COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+			WORKDIR /usr/src/app
+			RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","touch file && bash -c \\"something\\""]
+			RUN ["${opts.containerQemuPath}","-execve","/bin/sh","-c","apt-get update && apt-get install build-essential"]
+			CMD bash -c "sleep 12"
+			` + '\n';
 		// open a tar stream
 		const tarStream = fs.createReadStream(
 			'./tests/test-files/valid-archive.tar',
