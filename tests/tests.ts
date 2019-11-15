@@ -77,6 +77,10 @@ describe('Transpose a Dockerfile', () => {
 	it('should transpose a Dockerfile', () => {
 		const dockerfile = stripIndents`
 			FROM ubuntu
+			ARG foo="bar"
+			ARG myVar=zip anotherWord
+			EXPOSE 80 123/udp
+			EXPOSE 8080
 			COPY my-file my-container-file
 			ENV myvar multi word value with a "
 			LABEL version=1.0
@@ -88,6 +92,10 @@ describe('Transpose a Dockerfile', () => {
 			stripIndents`
 			FROM ubuntu
 			COPY ["${opts.hostQemuPath}","${opts.containerQemuPath}"]
+			ARG foo="bar"
+			ARG myVar=zip anotherWord
+			EXPOSE 80 123/udp
+			EXPOSE 8080
 			COPY ["my-file","my-container-file"]
 			ENV myvar="multi word value with a \\""
 			LABEL version="1.0"
