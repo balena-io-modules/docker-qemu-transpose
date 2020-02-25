@@ -183,19 +183,21 @@ const getTarEntryHandler = (
 		stream: NodeJS.ReadableStream,
 		next: (err?: Error) => void,
 	) => {
-		streamToPromise(stream).then((buffer: Buffer) => {
-			const name = normalizeTarEntry(header.name);
-			if (name === dockerfileName) {
-				const newDockerfile = transpose(buffer.toString(), opts);
-				pack.entry({ name: 'Dockerfile' }, newDockerfile);
-			} else {
-				if (name === opts.hostQemuPath && opts.qemuFileMode) {
-					header.mode = opts.qemuFileMode;
+		streamToPromise(stream)
+			.then((buffer: Buffer) => {
+				const name = normalizeTarEntry(header.name);
+				if (name === dockerfileName) {
+					const newDockerfile = transpose(buffer.toString(), opts);
+					pack.entry({ name: dockerfileName }, newDockerfile);
+				} else {
+					if (name === opts.hostQemuPath && opts.qemuFileMode) {
+						header.mode = opts.qemuFileMode;
+					}
+					pack.entry(header, buffer);
 				}
-				pack.entry(header, buffer);
-			}
-			next();
-		});
+				next();
+			})
+			.catch(next);
 	};
 };
 
@@ -214,6 +216,8 @@ export function transposeTarStream(
 	const pack = tar.pack();
 
 	return new Promise<NodeJS.ReadableStream>((resolve, reject) => {
+		pack.on('error', reject);
+		extract.on('error', reject);
 		extract.on('entry', getTarEntryHandler(pack, dockerfileName, options));
 
 		extract.on('finish', () => {
