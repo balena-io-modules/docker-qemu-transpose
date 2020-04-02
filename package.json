@@ -43,6 +43,7 @@
     "gulp-mocha": "^7.0.2",
     "gulp-sourcemaps": "^2.6.5",
     "gulp-typescript": "^5.0.1",
+    "kind-of": "^6.0.3",
     "mocha": "^6.2.2",
     "resin-lint": "^3.3.1",
     "rimraf": "^3.0.2",
