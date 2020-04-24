@@ -3,11 +3,11 @@
   "version": "1.0.4",
   "description": "Transpose a Dockerfile to use qemu-linux-user and emulate a build",
   "main": "build/index.js",
-  "types": "src/index.ts",
+  "types": "build/index.d.ts",
   "scripts": {
     "prepare": "gulp build",
-    "lint": "resin-lint --typescript src tests",
-    "prettify": "resin-lint --typescript --fix src tests",
+    "lint": "balena-lint --typescript src tests",
+    "prettify": "balena-lint --typescript --fix src tests",
     "test": "gulp test",
     "prebuild": "rimraf build/",
     "build": "npm run lint && gulp build"
@@ -18,20 +18,20 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/resin-io-modules/docker-qemu-transpose.git"
+    "url": "git+https://github.com/balena-io-modules/docker-qemu-transpose.git"
   },
   "keywords": [
     "docker",
     "qemu"
   ],
-  "author": "Cameron Diver <cameron@resin.io>",
+  "author": "Cameron Diver <cameron@balena.io>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/resin-io-modules/docker-qemu-transpose/issues"
+    "url": "https://github.com/balena-io-modules/docker-qemu-transpose/issues"
   },
-  "homepage": "https://github.com/resin-io-modules/docker-qemu-transpose#readme",
+  "homepage": "https://github.com/balena-io-modules/docker-qemu-transpose#readme",
   "devDependencies": {
-    "@types/chai": "^4.2.10",
+    "@types/chai": "^4.2.11",
     "@types/chai-as-promised": "^7.1.2",
     "@types/common-tags": "^1.8.0",
     "@types/mocha": "^5.2.7",
@@ -43,26 +43,26 @@
     "gulp-mocha": "^7.0.2",
     "gulp-sourcemaps": "^2.6.5",
     "gulp-typescript": "^5.0.1",
-    "mocha": "^6.2.2",
-    "resin-lint": "^3.3.1",
+    "mocha": "^6.2.3",
     "rimraf": "^3.0.2",
-    "ts-node": "^8.6.2",
+    "ts-node": "^8.9.0",
     "typescript": "^3.8.3"
   },
   "dependencies": {
+    "@balena/lint": "^4.1.1",
     "@types/bluebird": "^3.5.30",
     "@types/event-stream": "^3.3.34",
-    "@types/jsesc": "^0.4.29",
-    "@types/lodash": "^4.14.149",
-    "@types/node": "^7.10.9",
+    "@types/jsesc": "^2.5.0",
+    "@types/lodash": "^4.14.150",
+    "@types/node": "^8.10.60",
     "bluebird": "^3.7.2",
     "common-tags": "^1.8.0",
     "docker-file-parser": "^1.0.4",
-    "event-stream": "^3.3.4",
+    "event-stream": "^3.3.5",
     "jsesc": "^2.5.2",
     "lodash": "^4.17.15",
     "stream-to-promise": "^2.2.0",
-    "tar-stream": "^2.1.0",
-    "tar-utils": "^2.0.0"
+    "tar-stream": "^2.1.2",
+    "tar-utils": "^2.1.0"
   }
 }
