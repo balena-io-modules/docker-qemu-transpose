@@ -93,7 +93,7 @@ const transposeRun = (options: TransposeOptions, command: Command): Command => {
 	return transposeStringRun(options, command);
 };
 
-const identity = (options: TransposeOptions, command: Command): Command => {
+const identity = (_options: TransposeOptions, command: Command): Command => {
 	return command;
 };
 

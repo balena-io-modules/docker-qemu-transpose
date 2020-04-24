@@ -7,7 +7,10 @@
     "sourceMap": true,
     "strictNullChecks": true,
     "target": "es2017",
-    "declaration": true
+    "declaration": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strict": true
   },
   "include": [
     "src/"
