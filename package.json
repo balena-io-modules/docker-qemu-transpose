@@ -6,8 +6,8 @@
   "types": "build/index.d.ts",
   "scripts": {
     "prepare": "gulp build",
-    "lint": "resin-lint --typescript src tests",
-    "prettify": "resin-lint --typescript --fix src tests",
+    "lint": "balena-lint --typescript src tests",
+    "prettify": "balena-lint --typescript --fix src tests",
     "test": "gulp test",
     "prebuild": "rimraf build/",
     "build": "npm run lint && gulp build"
@@ -18,18 +18,18 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/resin-io-modules/docker-qemu-transpose.git"
+    "url": "git+https://github.com/balena-io-modules/docker-qemu-transpose.git"
   },
   "keywords": [
     "docker",
     "qemu"
   ],
-  "author": "Cameron Diver <cameron@resin.io>",
+  "author": "Cameron Diver <cameron@balena.io>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/resin-io-modules/docker-qemu-transpose/issues"
+    "url": "https://github.com/balena-io-modules/docker-qemu-transpose/issues"
   },
-  "homepage": "https://github.com/resin-io-modules/docker-qemu-transpose#readme",
+  "homepage": "https://github.com/balena-io-modules/docker-qemu-transpose#readme",
   "devDependencies": {
     "@types/chai": "^4.2.11",
     "@types/chai-as-promised": "^7.1.2",
@@ -44,12 +44,12 @@
     "gulp-sourcemaps": "^2.6.5",
     "gulp-typescript": "^5.0.1",
     "mocha": "^6.2.3",
-    "resin-lint": "^3.3.1",
     "rimraf": "^3.0.2",
     "ts-node": "^8.9.0",
     "typescript": "^3.8.3"
   },
   "dependencies": {
+    "@balena/lint": "^4.1.1",
     "@types/bluebird": "^3.5.30",
     "@types/event-stream": "^3.3.34",
     "@types/jsesc": "^2.5.0",
