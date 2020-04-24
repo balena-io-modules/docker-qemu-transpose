@@ -3,7 +3,7 @@
   "version": "1.0.4",
   "description": "Transpose a Dockerfile to use qemu-linux-user and emulate a build",
   "main": "build/index.js",
-  "types": "src/index.ts",
+  "types": "build/index.d.ts",
   "scripts": {
     "prepare": "gulp build",
     "lint": "resin-lint --typescript src tests",
