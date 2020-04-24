@@ -31,6 +31,7 @@
   },
   "homepage": "https://github.com/balena-io-modules/docker-qemu-transpose#readme",
   "devDependencies": {
+    "@balena/lint": "^4.1.1",
     "@types/chai": "^4.2.11",
     "@types/chai-as-promised": "^7.1.2",
     "@types/common-tags": "^1.8.0",
@@ -49,7 +50,6 @@
     "typescript": "^3.8.3"
   },
   "dependencies": {
-    "@balena/lint": "^4.1.1",
     "@types/bluebird": "^3.5.30",
     "@types/event-stream": "^3.3.34",
     "@types/jsesc": "^2.5.0",
