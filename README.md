@@ -1,5 +1,7 @@
 # Tranpose a Dockerfile for emulated builds
 
+**DEPRECATED -- This module has been deprecated; please use [balena-compose](https://github.com/balena-io-modules/balena-compose) instead.**
+
 Using this module as a pre-processor for Dockerfiles which will not run on your
 system natively, along with a version of `qemu-linux-user` suitable for
 emulation, will produce a Dockerfile which will run seamlessly.
